@@ -7,6 +7,7 @@ public class InputController : MonoBehaviour
 {
     //accion de movimiento
     InputAction moveAction;
+    InputAction shootAction;
 
     [HideInInspector] public Vector2 moveVector;
 
@@ -14,6 +15,7 @@ public class InputController : MonoBehaviour
     void Awake()
     {
       moveAction = InputSystem.actions.FindAction("Move");
+      shootAction = InputSystem.actions.FindAction("Attack");
     }
     
 
@@ -21,10 +23,19 @@ public class InputController : MonoBehaviour
     void Update()
     {
         GetInput();
+        Shoot();
     }
 
     public void GetInput()
     {
         moveVector = moveAction.ReadValue<Vector2>();
+    }
+
+    public void Shoot()
+    {
+        if (shootAction.WasPressedThisFrame())
+        {
+            GunController.Instance.Fire();
+        }
     }
 }
