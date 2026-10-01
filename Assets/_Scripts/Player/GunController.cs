@@ -86,12 +86,23 @@ public class GunController : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         Enemy enemy = other.GetComponent<Enemy>();
-        EnemyManager.Instance.AddEnemy(enemy);
+
+        if (enemy)
+        {
+            EnemyManager.Instance.AddEnemy(enemy);
+        }
+       
     }
 
     private void OnTriggerExit(Collider other)
     {
         Enemy enemy = other.GetComponent<Enemy>();
-        EnemyManager.Instance.RemoveEnemy(enemy);
+
+
+        if (enemy)
+        {
+            EnemyManager.Instance.RemoveEnemy(enemy);
+        }
+        
     }
 }
