@@ -1,4 +1,4 @@
-
+using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -19,56 +19,61 @@ public class EnemyAI : MonoBehaviour
     // Se almacena la variable para el componente del Nav Mesh.
     private NavMeshAgent navMeshAgent;
 
-    // Variable que va a guardar las velocidades de persecuci�n y de patrulla
-    public float patrolSpeed;
-    public float chaseSpeed;
+    // Referencia al Rigidbody para las físicas de empuje
+    private Rigidbody rb;
+
+    // Controla si el enemigo está siendo empujado por la onda
+    private bool isKnockedBack = false;
+
+    // Variable que va a guardar las velocidades de persecución y de patrulla
+    public float patrolSpeed = 3.5f;
+    public float chaseSpeed = 6.5f;
 
     private void Awake()
     {
-        // Se guarda el componente del Navmesh en la variable
         navMeshAgent = GetComponent<NavMeshAgent>();
-
+        rb = GetComponent<Rigidbody>();
     }
+
     private void Start()
     {
-        // Se llenan las variables con los componentes
         enemyAggro = GetComponent<EnemyAggro>();
 
-        // Se asegura que se guarda una referencia al jugador
-
         if (playerTransform == null)
-            playerTransform = FindAnyObjectByType<PlayerMovement>().transform;
+        {
+            PlayerMovement playerObj = FindAnyObjectByType<PlayerMovement>();
+            if (playerObj != null)
+            {
+                playerTransform = playerObj.transform;
+            }
+        }
 
-
-        
-        // Se cambia el punto de destino para que el enemigo se mueva
         NextPoint();
     }
 
     private void NextPoint()
     {
-        // Devuelve si no hay puntos de posici�n en el arreglo.
-        if (points == null || points.Length == 0)
+        // Verifica que el agente esté activo y sobre el NavMesh antes de asignar destino
+        if (points == null || points.Length == 0 || navMeshAgent == null || !navMeshAgent.enabled || !navMeshAgent.isOnNavMesh)
             return;
 
-        // Se le da destino al enemigo, el cual es el primer punto de la lista (por ser destpoint = 0).
         navMeshAgent.destination = points[destPoint].position;
-
-        // Se elige el siguiente punto en la lista. Todo numero menor que el divisor esel mismo m�dulo.
         destPoint = (destPoint + 1) % points.Length;
     }
 
     private void Update()
     {
-        // Se llama al metodo de movimiento constantemente
-       EnemyMovement();
+        if (isKnockedBack) return;
+
+        EnemyMovement();
     }
 
     private void EnemyMovement()
     {
-        // Se valida si la variable de EnemyAggro es verdadera, para que el enemigo se mueva a la posici�n del jugador
-        // Si es falsa el enemigo mantiene su posici�n
-        if (enemyAggro.isAggro)
+        // Evita ejecutar lógica de movimiento si el NavMeshAgent no está posicionado correctamente
+        if (navMeshAgent == null || !navMeshAgent.enabled || !navMeshAgent.isOnNavMesh) return;
+
+        if (enemyAggro != null && enemyAggro.isAggro && playerTransform != null)
         {
             navMeshAgent.SetDestination(playerTransform.position);
             navMeshAgent.speed = chaseSpeed;
@@ -79,11 +84,87 @@ public class EnemyAI : MonoBehaviour
             navMeshAgent.stoppingDistance = 0;
             navMeshAgent.speed = patrolSpeed;
 
+            // Se valida que esté en el NavMesh ANTES de consultar remainingDistance
             if (!navMeshAgent.pathPending && navMeshAgent.remainingDistance < 0.5f)
             {
                 NextPoint();
-            }        
+            }
         }
     }
 
+    public void RecibirEmpujeOnda(Vector3 centroExplosion, float fuerza, float radio, float elevacion)
+    {
+        StartCoroutine(RutinaEmpuje(centroExplosion, fuerza, radio, elevacion));
+    }
+
+   private IEnumerator RutinaEmpuje(Vector3 centroExplosion, float fuerza, float radio, float elevacion)
+{
+    isKnockedBack = true;
+
+    // 1. Apagar la IA
+    if (navMeshAgent != null)
+    {
+        navMeshAgent.enabled = false;
+    }
+
+    // 2. Aplicar físicas ajustando la altura del impacto
+    if (rb != null)
+    {
+        rb.isKinematic = false;
+
+        // --- CORRECCIÓN DE ALTURA ---
+        // Forzamos a que el centro de la explosión esté al nivel del piso o por debajo de la cápsula
+        Vector3 centroAjustado = centroExplosion;
+        if (centroAjustado.y >= transform.position.y)
+        {
+            centroAjustado.y = transform.position.y - 0.5f; 
+        }
+
+        rb.AddExplosionForce(fuerza, centroAjustado, radio, elevacion, ForceMode.Impulse);
+    }
+
+    // 3. Tiempo de vuelo
+    yield return new WaitForSeconds(0.5f);
+
+    // 4. Detener movimiento
+    if (rb != null)
+    {
+        if (!rb.isKinematic)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+        rb.isKinematic = true;
+    }
+
+    // 5. Reubicar en el NavMesh de forma segura
+    NavMeshHit hit;
+    if (NavMesh.SamplePosition(transform.position, out hit, 15.0f, NavMesh.AllAreas))
+    {
+        transform.position = hit.position;
+
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.enabled = true;
+            navMeshAgent.Warp(hit.position);
+        }
+    }
+    else
+    {
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.enabled = true;
+        }
+    }
+
+    isKnockedBack = false;
+
+    if (navMeshAgent != null && navMeshAgent.enabled && navMeshAgent.isOnNavMesh)
+    {
+        if (enemyAggro == null || !enemyAggro.isAggro)
+        {
+            NextPoint();
+        }
+    }
+}
 }
