@@ -88,7 +88,7 @@ public class Nuke : MonoBehaviour
 
         // Busca y destruye a todos los objetos en la escena que tengan el Tag "Enemigo"
         // Nota: Asegúrate de que tus enemigos tengan la etiqueta exactamente como "Enemigo"
-        foreach (GameObject enemy in GameObject.FindGameObjectsWithTag("Enemigo")) 
+        foreach (GameObject enemy in GameObject.FindGameObjectsWithTag("Enemy")) 
         {
             Destroy(enemy);
         }
