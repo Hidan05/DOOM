@@ -15,23 +15,20 @@ public class GunController : MonoBehaviour
 
     [Header("Weapon Mode")]
     public bool isExpansiveWeapon = false;
-    public ArmaOndaExpansiva expansiveWeaponScript; // Referencia al script independiente del arma expansiva
+    public ArmaOndaExpansiva expansiveWeaponScript; 
+
+    [Header("Inventory & Switching")]
+    public List<Guns> weaponInventory = new List<Guns>(); // Lista de armas normales desbloqueadas
+    public bool unlockedExpansive = false; // Indica si ya recogió el arma expansiva
+    private int currentWeaponIndex = 0; // Índice del arma actual
 
     void Awake()
     {
-        // Patrón Singleton: Garantiza que solo exista una instancia del controlador en la escena
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
 
         gunTrigger = GetComponent<BoxCollider>();
 
-        // Intenta obtener la referencia automáticamente si no fue asignada en el Inspector
         if (expansiveWeaponScript == null)
         {
             expansiveWeaponScript = GetComponent<ArmaOndaExpansiva>();
@@ -41,10 +38,87 @@ public class GunController : MonoBehaviour
     void Start()
     {
         canFire = true;
+
+        // Añade el arma inicial al inventario si se asignó una desde el Inspector
+        if (weapon != null && !weaponInventory.Contains(weapon))
+        {
+            weaponInventory.Add(weapon);
+        }
+        if (isExpansiveWeapon) unlockedExpansive = true;
+
         SetTrigger();
     }
 
-    // Ajusta las dimensiones y posición del BoxCollider según los rangos definidos en el arma normal
+    void Update()
+    {
+        // Detecta el movimiento de la rueda del ratón para cambiar de arma
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (scroll > 0f) SwitchNextWeapon();
+        else if (scroll < 0f) SwitchPreviousWeapon();
+    }
+
+    // --- LÓGICA DE INVENTARIO Y CAMBIO ---
+
+    // Añade un arma normal al inventario y la equipa
+    public void AddNormalWeapon(Guns newWeapon)
+    {
+        if (!weaponInventory.Contains(newWeapon))
+        {
+            weaponInventory.Add(newWeapon);
+        }
+        // Selecciona el índice del arma recién recogida
+        currentWeaponIndex = weaponInventory.IndexOf(newWeapon);
+        EquipNormalWeapon(newWeapon);
+    }
+
+    // Desbloquea el arma expansiva y la equipa
+    public void AddExpansiveWeapon()
+    {
+        unlockedExpansive = true;
+        // El arma expansiva siempre será el último índice disponible
+        currentWeaponIndex = weaponInventory.Count; 
+        EquipExpansiveWeapon();
+    }
+
+    private void SwitchNextWeapon()
+    {
+        int totalWeapons = weaponInventory.Count + (unlockedExpansive ? 1 : 0);
+        if (totalWeapons <= 1) return; // No hace nada si solo tiene 1 arma
+
+        currentWeaponIndex++;
+        if (currentWeaponIndex >= totalWeapons) currentWeaponIndex = 0;
+
+        EquipWeaponFromIndex();
+    }
+
+    private void SwitchPreviousWeapon()
+    {
+        int totalWeapons = weaponInventory.Count + (unlockedExpansive ? 1 : 0);
+        if (totalWeapons <= 1) return;
+
+        currentWeaponIndex--;
+        if (currentWeaponIndex < 0) currentWeaponIndex = totalWeapons - 1;
+
+        EquipWeaponFromIndex();
+    }
+
+    // Equipa el arma correspondiente según el índice actual
+    private void EquipWeaponFromIndex()
+    {
+        // Si el índice es menor a la cantidad de armas normales, equipa esa
+        if (currentWeaponIndex < weaponInventory.Count)
+        {
+            EquipNormalWeapon(weaponInventory[currentWeaponIndex]);
+        }
+        // Si el índice es igual a la cantidad de armas normales, significa que es la expansiva
+        else if (unlockedExpansive)
+        {
+            EquipExpansiveWeapon();
+        }
+    }
+
+    // --- LÓGICA DE EQUIPAMIENTO ORIGINAL ---
+
     public void SetTrigger()
     {
         if (gunTrigger != null && weapon != null)
@@ -54,33 +128,23 @@ public class GunController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Sustituye el arma normal actual por una nueva y actualiza el área de detección
-    /// </summary>
     public void EquipNormalWeapon(Guns newWeapon)
     {
         weapon = newWeapon;
         isExpansiveWeapon = false;
 
-        if (gunTrigger != null) 
-        {
-            gunTrigger.enabled = true;
-        }
+        if (gunTrigger != null) gunTrigger.enabled = true;
         SetTrigger();
     }
     
-    // Cambia el modo de disparo para usar el sistema de onda expansiva
     public void EquipExpansiveWeapon()
     {
         isExpansiveWeapon = true;
-
-        if (gunTrigger != null) 
-        {
-            gunTrigger.enabled = true;
-        }
+        if (gunTrigger != null) gunTrigger.enabled = true;
     }
 
-    // Corrutina para manejar la cadencia de tiro, bloqueando y liberando el disparo según el tiempo de espera
+    // --- LÓGICA DE DISPARO ---
+
     IEnumerator TimeToFire(float waitTime)
     {
         canFire = false;
@@ -88,7 +152,6 @@ public class GunController : MonoBehaviour
         canFire = true;
     }
 
-    // Método principal de disparo evaluado según el tipo de arma equipada
     public void Fire()
     {
         if (!canFire) return;
@@ -97,7 +160,6 @@ public class GunController : MonoBehaviour
         {
             if (expansiveWeaponScript != null)
             {
-                // Delega la ejecución del disparo y sus físicas al script especializado en ondas
                 expansiveWeaponScript.ExecuteExpansiveShot(transform, audioSource);
                 StartCoroutine(TimeToFire(expansiveWeaponScript.fireRate));
             }
@@ -106,7 +168,6 @@ public class GunController : MonoBehaviour
         {
             if (weapon == null) return;
 
-            // Reproduce el sonido específico asignado al arma normal
             if (audioSource != null && weapon.sound != null)
             {
                 audioSource.PlayOneShot(weapon.sound);
@@ -117,12 +178,10 @@ public class GunController : MonoBehaviour
         }
     }
 
-    // Aplica daño a los enemigos dentro del área mediante proyección de rayos (Raycast)
     private void FireNormalWeapon()
     {
         if (EnemyManager.Instance == null) return;
 
-        // Itera sobre la lista de enemigos actualmente detectados en el rango
         foreach (Enemy enemy in EnemyManager.Instance.enemiesInRange)
         {
             if (enemy == null) continue;
@@ -130,39 +189,30 @@ public class GunController : MonoBehaviour
             RaycastHit hit;
             var direction = enemy.transform.position - transform.position;
 
-            // Lanza un rayo hacia el enemigo para comprobar si hay obstáculos en la trayectoria
             if (Physics.Raycast(transform.position, direction, out hit, weapon.range * 1.5f, raycastLayerMask))
             {
-                // Si el rayo impacta directamente al enemigo, procede a aplicar el daño
                 if (hit.transform == enemy.transform)
                 {
                     enemy.Damage(weapon.damage, transform.rotation);
+                    enemy.Die();
                 }
             }
         }
     }
 
-    // Registra a los enemigos que ingresan al área de alcance del arma normal
     private void OnTriggerEnter(Collider other)
     {
         if (isExpansiveWeapon) return;
 
         Enemy enemy = other.GetComponent<Enemy>();
-        if (enemy && EnemyManager.Instance != null)
-        {
-            EnemyManager.Instance.AddEnemy(enemy);
-        }
+        if (enemy && EnemyManager.Instance != null) EnemyManager.Instance.AddEnemy(enemy);
     }
 
-    // Elimina del registro a los enemigos que abandonan el área de alcance del arma normal
     private void OnTriggerExit(Collider other)
     {
         if (isExpansiveWeapon) return;
 
         Enemy enemy = other.GetComponent<Enemy>();
-        if (enemy && EnemyManager.Instance != null)
-        {
-            EnemyManager.Instance.RemoveEnemy(enemy);
-        }
+        if (enemy && EnemyManager.Instance != null) EnemyManager.Instance.RemoveEnemy(enemy);
     }
 }
