@@ -6,19 +6,20 @@ public class GunController : MonoBehaviour
 {
     public static GunController Instance;
 
-    [Header("Configuración General")]
+    [Header("General Configuration")]
     private BoxCollider gunTrigger;
-    public Guns weapon; // ScriptableObject del arma normal
+    public Guns weapon; 
     public LayerMask raycastLayerMask;
     public AudioSource audioSource;
     private bool canFire;
 
-    [Header("Modo de Arma")]
-    public bool isExpansionWeapon = false;
-    public ArmaOndaExpansiva armaOndaScript; // Referencia al script independiente
+    [Header("Weapon Mode")]
+    public bool isExpansiveWeapon = false;
+    public ArmaOndaExpansiva expansiveWeaponScript; // Referencia al script independiente del arma expansiva
 
     void Awake()
     {
+        // Patrón Singleton: Garantiza que solo exista una instancia del controlador en la escena
         if (Instance == null)
         {
             Instance = this;
@@ -30,10 +31,10 @@ public class GunController : MonoBehaviour
 
         gunTrigger = GetComponent<BoxCollider>();
 
-        // Intenta obtener el componente si no está asignado en el Inspector
-        if (armaOndaScript == null)
+        // Intenta obtener la referencia automáticamente si no fue asignada en el Inspector
+        if (expansiveWeaponScript == null)
         {
-            armaOndaScript = GetComponent<ArmaOndaExpansiva>();
+            expansiveWeaponScript = GetComponent<ArmaOndaExpansiva>();
         }
     }
 
@@ -43,6 +44,7 @@ public class GunController : MonoBehaviour
         SetTrigger();
     }
 
+    // Ajusta las dimensiones y posición del BoxCollider según los rangos definidos en el arma normal
     public void SetTrigger()
     {
         if (gunTrigger != null && weapon != null)
@@ -53,66 +55,74 @@ public class GunController : MonoBehaviour
     }
 
     /// <summary>
-    /// Equipa un arma normal desde un ScriptableObject
+    /// Sustituye el arma normal actual por una nueva y actualiza el área de detección
     /// </summary>
-    public void EquiparArmaNormal(Guns nuevaArma)
+    public void EquipNormalWeapon(Guns newWeapon)
     {
-        weapon = nuevaArma;
-        isExpansionWeapon = false;
+        weapon = newWeapon;
+        isExpansiveWeapon = false;
 
-        if (gunTrigger != null) gunTrigger.enabled = true;
+        if (gunTrigger != null) 
+        {
+            gunTrigger.enabled = true;
+        }
         SetTrigger();
     }
     
-public void EquiparArmaExpansiva()
-{
-    isExpansionWeapon = true;
-
-    // Mantenemos el BoxCollider activo para no perder detecciones de física
-    if (gunTrigger != null) 
+    // Cambia el modo de disparo para usar el sistema de onda expansiva
+    public void EquipExpansiveWeapon()
     {
-        gunTrigger.enabled = true;
-    }
-}
+        isExpansiveWeapon = true;
 
-    IEnumerator Timetofire(float tiempoEspera)
+        if (gunTrigger != null) 
+        {
+            gunTrigger.enabled = true;
+        }
+    }
+
+    // Corrutina para manejar la cadencia de tiro, bloqueando y liberando el disparo según el tiempo de espera
+    IEnumerator TimeToFire(float waitTime)
     {
         canFire = false;
-        yield return new WaitForSeconds(tiempoEspera);
+        yield return new WaitForSeconds(waitTime);
         canFire = true;
     }
 
+    // Método principal de disparo evaluado según el tipo de arma equipada
     public void Fire()
     {
         if (!canFire) return;
 
-        if (isExpansionWeapon)
+        if (isExpansiveWeapon)
         {
-            if (armaOndaScript != null)
+            if (expansiveWeaponScript != null)
             {
-                // Dispara desde la posición del arma y delega la física a ArmaOndaExpansiva
-                armaOndaScript.EjecutarDisparoOnda(transform, audioSource);
-                StartCoroutine(Timetofire(armaOndaScript.cadenciaDisparo));
+                // Delega la ejecución del disparo y sus físicas al script especializado en ondas
+                expansiveWeaponScript.ExecuteExpansiveShot(transform, audioSource);
+                StartCoroutine(TimeToFire(expansiveWeaponScript.fireRate));
             }
         }
         else
         {
             if (weapon == null) return;
 
+            // Reproduce el sonido específico asignado al arma normal
             if (audioSource != null && weapon.sound != null)
             {
                 audioSource.PlayOneShot(weapon.sound);
             }
 
-            DispararArmaNormal();
-            StartCoroutine(Timetofire(weapon.fireRate));
+            FireNormalWeapon();
+            StartCoroutine(TimeToFire(weapon.fireRate));
         }
     }
 
-    private void DispararArmaNormal()
+    // Aplica daño a los enemigos dentro del área mediante proyección de rayos (Raycast)
+    private void FireNormalWeapon()
     {
         if (EnemyManager.Instance == null) return;
 
+        // Itera sobre la lista de enemigos actualmente detectados en el rango
         foreach (Enemy enemy in EnemyManager.Instance.enemiesInRange)
         {
             if (enemy == null) continue;
@@ -120,20 +130,22 @@ public void EquiparArmaExpansiva()
             RaycastHit hit;
             var direction = enemy.transform.position - transform.position;
 
+            // Lanza un rayo hacia el enemigo para comprobar si hay obstáculos en la trayectoria
             if (Physics.Raycast(transform.position, direction, out hit, weapon.range * 1.5f, raycastLayerMask))
             {
+                // Si el rayo impacta directamente al enemigo, procede a aplicar el daño
                 if (hit.transform == enemy.transform)
                 {
                     enemy.Damage(weapon.damage, transform.rotation);
-                    enemy.Die();
                 }
             }
         }
     }
 
+    // Registra a los enemigos que ingresan al área de alcance del arma normal
     private void OnTriggerEnter(Collider other)
     {
-        if (isExpansionWeapon) return;
+        if (isExpansiveWeapon) return;
 
         Enemy enemy = other.GetComponent<Enemy>();
         if (enemy && EnemyManager.Instance != null)
@@ -142,9 +154,10 @@ public void EquiparArmaExpansiva()
         }
     }
 
+    // Elimina del registro a los enemigos que abandonan el área de alcance del arma normal
     private void OnTriggerExit(Collider other)
     {
-        if (isExpansionWeapon) return;
+        if (isExpansiveWeapon) return;
 
         Enemy enemy = other.GetComponent<Enemy>();
         if (enemy && EnemyManager.Instance != null)
