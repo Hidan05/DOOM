@@ -9,12 +9,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e7891297296d07043a1d8bec9f55357a, type: 3}
-  m_Name: Escpeta
+  m_Script: {fileID: 11500000, guid: d20267674886a7a4ba3bcf3c99bd2db5, type: 3}
+  m_Name: Escopeta_SO
   m_EditorClassIdentifier: 
-  range: 5
-  horizontalRange: 10
-  verticalRange: 5
-  fireRate: 1
-  damage: 10
-  sound: {fileID: 8300000, guid: e2b91d672743ef44c85c3f535c4f42e1, type: 3}
+  weaponName: Escopeta
+  range: 10
+  horizontalRange: 3
+  verticalRange: 3
+  fireRate: 1.2
+  damage: 50
+  magazineSize: 6
+  ammoType: 
+  sound: {fileID: 0}
+  emptySound: {fileID: 0}
