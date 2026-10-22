@@ -1,22 +1,28 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class HUDLlaves : MonoBehaviour
 {
-    [Header("Icono de la llave")]
-    public GameObject iconoLlave;
+    public static HUDLlaves Instance;
+
+    [Header("Key UI Icon")]
+    public GameObject keyIcon;
+
+    void Awake()
+    {
+        // Singleton para poder llamarlo fácilmente desde el KeyManager
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
 
     void Start()
     {
-        MostrarLlave(false);
+        // Oculta el icono de la llave al iniciar el juego
+        ToggleKeyIcon(false);
     }
 
-    public void MostrarLlave(bool tieneLlave)
+    // Muestra u oculta el icono de la llave en la interfaz
+    public void ToggleKeyIcon(bool hasKey)
     {
-        if (iconoLlave != null)
-        {
-            iconoLlave.SetActive(tieneLlave);
-        }
+        if (keyIcon) keyIcon.SetActive(hasKey);
     }
 }

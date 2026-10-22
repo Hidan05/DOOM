@@ -1,26 +1,32 @@
 using UnityEngine;
 
-public class Trofeo : MonoBehaviour
+public class Trophy : MonoBehaviour
 {
-    public GameObject GameOver;
+    public GameObject gameOverUI;
 
     void Start()
     {
-        GameOver.SetActive(false);
+        if (gameOverUI) gameOverUI.SetActive(false);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!other.CompareTag("Player")) return;
+
+        // Verifica si existe el administrador de llaves y si el jugador ya la tiene
+        if (KeyManager.Instance != null && !KeyManager.Instance.hasKey)
         {
-            // Mostrar men� de Game Over
-            GameOver.SetActive(true);
-
-            // Ocultar el trofeo
-            gameObject.SetActive(false);
-
-            // Pausar el juego
-            Time.timeScale = 0f;
+            Debug.Log("¡Necesitas conseguir la llave antes de recoger el trofeo!");
+            return; // Cancela la ejecución si no tiene la llave
         }
+
+        // Muestra la pantalla de fin de juego / victoria
+        if (gameOverUI) gameOverUI.SetActive(true);
+
+        // Oculta el trofeo del mapa
+        gameObject.SetActive(false);
+
+        // Pausa el juego
+        Time.timeScale = 0f;
     }
 }
