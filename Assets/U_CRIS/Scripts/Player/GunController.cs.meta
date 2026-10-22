@@ -4,8 +4,14 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
+  - modeloPistola: {fileID: 4334456834772640127, guid: 1354a3df957a1714f9802eb8dd7f2665,
+      type: 3}
+  - modeloEscopeta: {fileID: 2328682566203978235, guid: 0bfe4470185b3454783879bb31d2e593,
+      type: 3}
   - weapon: {instanceID: 0}
   - audioSource: {instanceID: 0}
+  - pistolaData: {instanceID: 0}
+  - escopetaData: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

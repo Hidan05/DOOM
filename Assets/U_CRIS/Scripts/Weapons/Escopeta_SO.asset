@@ -20,5 +20,5 @@ MonoBehaviour:
   damage: 50
   magazineSize: 6
   ammoType: 
-  sound: {fileID: 0}
-  emptySound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e2b91d672743ef44c85c3f535c4f42e1, type: 3}
+  emptySound: {fileID: 8300000, guid: cf2e41627a54792449ecaf2979bbb0cc, type: 3}

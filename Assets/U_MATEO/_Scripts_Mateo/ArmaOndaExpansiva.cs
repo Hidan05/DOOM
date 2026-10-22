@@ -3,7 +3,9 @@ using UnityEngine;
 public class ArmaOndaExpansiva : MonoBehaviour
 {
     [Header("Wave Configuration")]
-    public float explosionRadius = 6f, pushForce = 900f, pushElevation = 1f;
+    public float horizontalRange = 6f;  
+    public float verticalRange = 2f;    
+    public float pushForce = 900f, pushElevation = 1f;
     public float fireRate = 0.5f, shootRange = 15f;
     public int damage = 50;
 
@@ -24,11 +26,16 @@ public class ArmaOndaExpansiva : MonoBehaviour
         GenerateWaveAtPoint(impactPoint, origin.rotation);
     }
 
-    // Procesa las colisiones dentro del radio de la onda
+    // Procesa las colisiones dentro de un área controlada (caja) nivelada al suelo
     private void GenerateWaveAtPoint(Vector3 center, Quaternion originRotation)
     {
-        // Obtiene todos los colisionadores atrapados en la esfera de impacto
-        Collider[] hitColliders = Physics.OverlapSphere(center, explosionRadius, impactLayer);
+        Vector3 halfExtents = new Vector3(horizontalRange, verticalRange, horizontalRange);
+        
+        // CORRECCIÓN: Obligamos a que la caja siempre esté plana respecto al suelo (eje Y), 
+        // ignorando si el jugador estaba apuntando hacia el cielo o hacia el piso.
+        Quaternion flatRotation = Quaternion.Euler(0, originRotation.eulerAngles.y, 0);
+
+        Collider[] hitColliders = Physics.OverlapBox(center, halfExtents, flatRotation, impactLayer);
 
         foreach (Collider col in hitColliders)
         {
@@ -37,19 +44,22 @@ public class ArmaOndaExpansiva : MonoBehaviour
             if (enemy) 
             {
                 enemy.Damage(damage, originRotation);
-                enemy.Die(); // <-- Ahora sí está correctamente dentro del ciclo
+                enemy.Die(); 
             }
 
             // Delega el efecto físico de empuje al sistema de IA del enemigo
             EnemyAI enemyAI = col.GetComponentInParent<EnemyAI>();
-            if (enemyAI) enemyAI.ReceiveWavePush(center, pushForce, explosionRadius, pushElevation);
+            if (enemyAI) enemyAI.ReceiveWavePush(center, pushForce, horizontalRange, pushElevation);
         }
     }
 
-    // Dibuja una esfera de referencia en el editor de Unity para previsualizar el alcance de la explosión
+    // Dibuja una caja de referencia en el editor de Unity para previsualizar el alcance exacto
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, explosionRadius);
+        // CORRECCIÓN VISUAL: Modificamos la matriz del Gizmo para que también dibuje la caja 
+        // completamente nivelada al suelo en la ventana de Scene de Unity.
+        Gizmos.matrix = Matrix4x4.TRS(transform.position, Quaternion.Euler(0, transform.eulerAngles.y, 0), Vector3.one);
+        Gizmos.DrawWireCube(Vector3.zero, new Vector3(horizontalRange * 2, verticalRange * 2, horizontalRange * 2));
     }
 }

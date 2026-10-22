@@ -206,8 +206,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 150
-  m_fontSizeBase: 150
+  m_fontSize: 100
+  m_fontSizeBase: 100
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -242,7 +242,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: -495.48828, y: 0, z: -494.19922, w: -96.57959}
+  m_margin: {x: -495.48828, y: 0, z: -490.19446, w: -96.57959}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -2265,8 +2265,10 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 72
   audioSource: {fileID: 1815053203}
-  isExpansionWeapon: 0
-  armaOndaScript: {fileID: 0}
+  isExpansiveWeapon: 0
+  expansiveWeaponScript: {fileID: 0}
+  weaponInventory: []
+  unlockedExpansive: 0
 --- !u!114 &1815053206
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2293,17 +2295,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8645db29c4525174bb6197673bb116da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  radioExplosion: 8
-  fuerzaEmpuje: 4
-  elevacionEmpuje: 0.2
-  "da\xF1o": 5
-  cadenciaDisparo: 0.5
-  alcanceDisparo: 50
-  capaImpacto:
+  horizontalRange: 6
+  verticalRange: 2
+  pushForce: 900
+  pushElevation: 1
+  fireRate: 0.5
+  shootRange: 15
+  damage: 50
+  impactLayer:
     serializedVersion: 2
-    m_Bits: 72
-  sonidoDisparo: {fileID: 8300000, guid: e2b91d672743ef44c85c3f535c4f42e1, type: 3}
-  vfxOndaImpacto: {fileID: 0}
+    m_Bits: 0
+  shootSound: {fileID: 0}
 --- !u!850595691 &1823816789
 LightingSettings:
   m_ObjectHideFlags: 0

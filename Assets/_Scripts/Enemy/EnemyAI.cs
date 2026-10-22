@@ -4,28 +4,24 @@ using UnityEngine.AI;
 
 public class EnemyAI : MonoBehaviour
 {
-    // Almacena los puntos de movimiento de los enemigos.
-    public Transform[] points;
+    [Header("Patrol Settings")]
+    public float patrolRadius = 25f;  // Distancia máxima para buscar puntos de patrullaje
+    public int numberOfPoints = 3;    // Cantidad de puntos a generar automáticamente
+    
+    // Almacena las coordenadas aleatorias generadas
+    private Vector3[] patrolPoints;
+    private int currentPointIndex = 0;
 
-    // Define el primer destino como el primer elemento de la lista.
-    private int destPoint = 0;
-
-    // Variable para almacenar el componente del Script de Enemy Aggro
+    // Referencias
     private EnemyAggro enemyAggro;
-
-    // Para almacenar el transform del jugador.
     private Transform playerTransform;
-
-    // Se almacena la variable para el componente del Nav Mesh.
     private NavMeshAgent navMeshAgent;
-
-    // Referencia al Rigidbody para las físicas de empuje
     private Rigidbody rb;
 
-    // Controla si el enemigo está siendo empujado por la onda
+    // Control de físicas
     private bool isKnockedBack = false;
 
-    // Variable que va a guardar las velocidades de persecución y de patrulla
+    [Header("Speeds")]
     public float patrolSpeed = 3.5f;
     public float chaseSpeed = 6.5f;
 
@@ -48,17 +44,47 @@ public class EnemyAI : MonoBehaviour
             }
         }
 
+        // Genera los puntos aleatorios de patrullaje al nacer
+        GeneratePatrolPoints();
         NextPoint();
+    }
+
+    // Calcula puntos al azar sobre el NavMesh basados en su posición inicial
+    private void GeneratePatrolPoints()
+    {
+        patrolPoints = new Vector3[numberOfPoints];
+
+        for (int i = 0; i < numberOfPoints; i++)
+        {
+            // Genera una dirección aleatoria dentro de una esfera
+            Vector3 randomDirection = Random.insideUnitSphere * patrolRadius;
+            randomDirection += transform.position; // Se centra en donde spawneó el enemigo
+
+            NavMeshHit hit;
+            // Busca el punto transitable más cercano en el NavMesh (radio de búsqueda = patrolRadius)
+            if (NavMesh.SamplePosition(randomDirection, out hit, patrolRadius, NavMesh.AllAreas))
+            {
+                patrolPoints[i] = hit.position;
+            }
+            else
+            {
+                // Si falla (muy raro), asigna su posición actual como respaldo
+                patrolPoints[i] = transform.position; 
+            }
+        }
     }
 
     private void NextPoint()
     {
-        // Verifica que el agente esté activo y sobre el NavMesh antes de asignar destino
-        if (points == null || points.Length == 0 || navMeshAgent == null || !navMeshAgent.enabled || !navMeshAgent.isOnNavMesh)
+        // Verifica que el agente y el arreglo sean válidos
+        if (patrolPoints == null || patrolPoints.Length == 0 || navMeshAgent == null || !navMeshAgent.enabled || !navMeshAgent.isOnNavMesh)
             return;
 
-        navMeshAgent.destination = points[destPoint].position;
-        destPoint = (destPoint + 1) % points.Length;
+        // Asigna la coordenada actual como destino
+        navMeshAgent.destination = patrolPoints[currentPointIndex];
+        
+        // Pasa al siguiente índice y vuelve a 0 si llega al final
+        currentPointIndex = (currentPointIndex + 1) % patrolPoints.Length;
     }
 
     private void Update()
@@ -70,7 +96,6 @@ public class EnemyAI : MonoBehaviour
 
     private void EnemyMovement()
     {
-        // Evita ejecutar lógica de movimiento si el NavMeshAgent no está posicionado correctamente
         if (navMeshAgent == null || !navMeshAgent.enabled || !navMeshAgent.isOnNavMesh) return;
 
         if (enemyAggro != null && enemyAggro.isAggro && playerTransform != null)
@@ -84,7 +109,7 @@ public class EnemyAI : MonoBehaviour
             navMeshAgent.stoppingDistance = 0;
             navMeshAgent.speed = patrolSpeed;
 
-            // Se valida que esté en el NavMesh ANTES de consultar remainingDistance
+            // Si está patrullando y llegó a su destino, pasa al siguiente punto
             if (!navMeshAgent.pathPending && navMeshAgent.remainingDistance < 0.5f)
             {
                 NextPoint();
@@ -101,19 +126,12 @@ public class EnemyAI : MonoBehaviour
     {
         isKnockedBack = true;
 
-        // 1. Apagar la IA
-        if (navMeshAgent != null)
-        {
-            navMeshAgent.enabled = false;
-        }
+        if (navMeshAgent != null) navMeshAgent.enabled = false;
 
-        // 2. Aplicar físicas ajustando la altura del impacto
         if (rb != null)
         {
             rb.isKinematic = false;
 
-            // --- CORRECCIÓN DE ALTURA ---
-            // Forzamos a que el centro de la explosión esté al nivel del piso o por debajo de la cápsula
             Vector3 adjustedCenter = explosionCenter;
             if (adjustedCenter.y >= transform.position.y)
             {
@@ -123,10 +141,8 @@ public class EnemyAI : MonoBehaviour
             rb.AddExplosionForce(force, adjustedCenter, radius, elevation, ForceMode.Impulse);
         }
 
-        // 3. Tiempo de vuelo
         yield return new WaitForSeconds(0.5f);
 
-        // 4. Detener movimiento
         if (rb != null)
         {
             if (!rb.isKinematic)
@@ -137,8 +153,8 @@ public class EnemyAI : MonoBehaviour
             rb.isKinematic = true;
         }
 
-        // 5. Reubicar en el NavMesh de forma segura
         NavMeshHit hit;
+        // Se mantiene el radio de reconexión corto que corregimos en el mensaje anterior (2.0f)
         if (NavMesh.SamplePosition(transform.position, out hit, 2.0f, NavMesh.AllAreas))
         {
             transform.position = hit.position;
@@ -151,10 +167,7 @@ public class EnemyAI : MonoBehaviour
         }
         else
         {
-            if (navMeshAgent != null)
-            {
-                navMeshAgent.enabled = true;
-            }
+            if (navMeshAgent != null) navMeshAgent.enabled = true;
         }
 
         isKnockedBack = false;
@@ -166,5 +179,12 @@ public class EnemyAI : MonoBehaviour
                 NextPoint();
             }
         }
+    }
+    
+    // Dibuja la zona de patrullaje en el editor de Unity (línea amarilla)
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, patrolRadius);
     }
 }
