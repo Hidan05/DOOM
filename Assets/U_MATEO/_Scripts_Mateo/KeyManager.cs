@@ -11,10 +11,16 @@ public class KeyManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    // Método para marcar que la llave ha sido obtenida
     public void CollectKey()
     {
         hasKey = true;
+
+        // Activa la imagen de la llave en el HUD cuando la recoge
+        if (HUDLlaves.Instance != null)
+        {
+            HUDLlaves.Instance.ToggleKeyIcon(true);
+        }
+
         Debug.Log("¡Llave recolectada!");
     }
 }
