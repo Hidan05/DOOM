@@ -92,79 +92,79 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    public void RecibirEmpujeOnda(Vector3 centroExplosion, float fuerza, float radio, float elevacion)
+    public void ReceiveWavePush(Vector3 explosionCenter, float force, float radius, float elevation)
     {
-        StartCoroutine(RutinaEmpuje(centroExplosion, fuerza, radio, elevacion));
+        StartCoroutine(KnockbackRoutine(explosionCenter, force, radius, elevation));
     }
 
-   private IEnumerator RutinaEmpuje(Vector3 centroExplosion, float fuerza, float radio, float elevacion)
-{
-    isKnockedBack = true;
-
-    // 1. Apagar la IA
-    if (navMeshAgent != null)
+    private IEnumerator KnockbackRoutine(Vector3 explosionCenter, float force, float radius, float elevation)
     {
-        navMeshAgent.enabled = false;
-    }
+        isKnockedBack = true;
 
-    // 2. Aplicar físicas ajustando la altura del impacto
-    if (rb != null)
-    {
-        rb.isKinematic = false;
-
-        // --- CORRECCIÓN DE ALTURA ---
-        // Forzamos a que el centro de la explosión esté al nivel del piso o por debajo de la cápsula
-        Vector3 centroAjustado = centroExplosion;
-        if (centroAjustado.y >= transform.position.y)
-        {
-            centroAjustado.y = transform.position.y - 0.5f; 
-        }
-
-        rb.AddExplosionForce(fuerza, centroAjustado, radio, elevacion, ForceMode.Impulse);
-    }
-
-    // 3. Tiempo de vuelo
-    yield return new WaitForSeconds(0.5f);
-
-    // 4. Detener movimiento
-    if (rb != null)
-    {
-        if (!rb.isKinematic)
-        {
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
-        rb.isKinematic = true;
-    }
-
-    // 5. Reubicar en el NavMesh de forma segura
-    NavMeshHit hit;
-    if (NavMesh.SamplePosition(transform.position, out hit, 15.0f, NavMesh.AllAreas))
-    {
-        transform.position = hit.position;
-
+        // 1. Apagar la IA
         if (navMeshAgent != null)
         {
-            navMeshAgent.enabled = true;
-            navMeshAgent.Warp(hit.position);
+            navMeshAgent.enabled = false;
         }
-    }
-    else
-    {
-        if (navMeshAgent != null)
-        {
-            navMeshAgent.enabled = true;
-        }
-    }
 
-    isKnockedBack = false;
-
-    if (navMeshAgent != null && navMeshAgent.enabled && navMeshAgent.isOnNavMesh)
-    {
-        if (enemyAggro == null || !enemyAggro.isAggro)
+        // 2. Aplicar físicas ajustando la altura del impacto
+        if (rb != null)
         {
-            NextPoint();
+            rb.isKinematic = false;
+
+            // --- CORRECCIÓN DE ALTURA ---
+            // Forzamos a que el centro de la explosión esté al nivel del piso o por debajo de la cápsula
+            Vector3 adjustedCenter = explosionCenter;
+            if (adjustedCenter.y >= transform.position.y)
+            {
+                adjustedCenter.y = transform.position.y - 0.5f; 
+            }
+
+            rb.AddExplosionForce(force, adjustedCenter, radius, elevation, ForceMode.Impulse);
+        }
+
+        // 3. Tiempo de vuelo
+        yield return new WaitForSeconds(0.5f);
+
+        // 4. Detener movimiento
+        if (rb != null)
+        {
+            if (!rb.isKinematic)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+            rb.isKinematic = true;
+        }
+
+        // 5. Reubicar en el NavMesh de forma segura
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(transform.position, out hit, 2.0f, NavMesh.AllAreas))
+        {
+            transform.position = hit.position;
+
+            if (navMeshAgent != null)
+            {
+                navMeshAgent.enabled = true;
+                navMeshAgent.Warp(hit.position);
+            }
+        }
+        else
+        {
+            if (navMeshAgent != null)
+            {
+                navMeshAgent.enabled = true;
+            }
+        }
+
+        isKnockedBack = false;
+
+        if (navMeshAgent != null && navMeshAgent.enabled && navMeshAgent.isOnNavMesh)
+        {
+            if (enemyAggro == null || !enemyAggro.isAggro)
+            {
+                NextPoint();
+            }
         }
     }
-}
 }

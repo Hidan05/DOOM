@@ -1,32 +1,53 @@
-
 using UnityEngine;
 
 public class PlayerStats : MonoBehaviour
 {
-    // Guarda la salud maxima del jugador
+    // Guarda la salud máxima del jugador
     public int maxHealth;
 
-    // Se inicializa la variable que se modifica en el juego
+    // Referencia a la barra de vida
+    public BarraDeVida barraDevida;
+
+    // Salud actual del jugador
     [HideInInspector] public int health;
 
-    // Start is called before the first frame update
     void Start()
     {
-        // Se le asigna a la variable el valor de salud maxima
+        // Asigna la salud máxima al comenzar
         health = maxHealth;
+
+        // Inicializa la barra si está asignada
+        if (barraDevida != null)
+        {
+            barraDevida.InicializarBarraDeVida(health);
+        }
+        else
+        {
+            Debug.LogWarning
+            (
+                "Debes asignar la BarraDeVida en el Inspector."
+            );
+        }
     }
 
     public void PlayerDamage()
     {
-        if(health > 1)
+        if (health > 1)
         {
-            health --;
+            health--;
+
+            // Actualiza la barra después de recibir daño
+            if (barraDevida != null)
+            {
+                barraDevida.CambiarVidaActual(health);
+            }
+
             Debug.Log(health);
         }
-        else if(health == 1)
+        else if (health == 1)
         {
             Debug.Log("Personaje Muere");
         }
     }
-
 }
+
